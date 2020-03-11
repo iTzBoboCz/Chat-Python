@@ -13,23 +13,26 @@ def clients(server):
     clients = []
     while True:
         con, address = server.accept()  # prijmi clienta
-        thread_con = thread.start_new_thread(chat, (con, clients, address,))
-        clients.append(con) #https://www.youtube.com/watch?v=D0SLpD7JvZI
-        con.send(bytes("You have joined chat.", "utf-8"))
+        clients.append(con)
         print(f"[{address}]: connected")
+        thread_con = thread.start_new_thread(chat, (con, clients, address,))
+        pass
+    clients.remove(con)
+    con.close()
 
 def chat(con, clients, address):
     while True:
         #if is not None => pokud není prázdná
         # pokud existuje
-        msg = con.recv(1024) #zprava
-        for client in clients:
-            client.send(msg)
-        if not msg:
+        if not con.recv(1024):
             print(f"[{address}]: disconnected")
-            clients.remove(con)
-            con.close()
+
             break
-        #print(msg.decode("utf-8"))
+        else:
+            msg = con.recv(1024) #zprava
+
+            for client in clients:
+                client.send(msg)
+    break
 
 clients(server)
