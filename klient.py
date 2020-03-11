@@ -2,8 +2,9 @@ import socket
 
 serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-host = "172.16.3.121" #doma pouze socket.gethostname()
-port = 2205 #2205
+# socket.gethostbyaddr("89.176.78.154")[0]
+host = socket.gethostbyaddr("localhost")[0] #doma pouze socket.gethostname()
+port = 27015 #2205
 
 serversocket.connect((host, port))
 
