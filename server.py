@@ -23,13 +23,15 @@ def chat(con, clients, address):
         #if is not None => pokud není prázdná
         # pokud existuje
         msg = con.recv(1024) #zprava
-        for client in clients:
-            client.send(msg)
         if not msg:
             print(f"[{address}]: disconnected")
             clients.remove(con)
             con.close()
             break
+        else:
+            print(msg.decode("utf-8"))
+            for client in clients:
+                client.send(msg)
         #print(msg.decode("utf-8"))
 
 clients(server)

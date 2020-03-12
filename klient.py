@@ -7,33 +7,22 @@ port = 2205
 
 serversocket.connect((host, port))
 
-check = False
+
 def client_send(serversocket):
-    global check
     while True:
-    	if check:
-    		msg = bytes(input("A:"), "utf-8")
-    		serversocket.send(msg)
-    		check = False
-    	else:
-    		check = True
+        msg = bytes(input("A:"), "utf-8")
+        serversocket.send(msg)
 
 def client_receive(serversocket):
-    global check
     while True:
-        if check == False:
-            msg = serversocket.recv(1024)
-            if not msg:
-                print("NEFUNGUJE SERVER")
-                serversocket.close()
-                break
-            else:
-                print(msg.decode("utf-8"))
-            check = True
+        msg = serversocket.recv(1024)
+        if not msg:
+            print("NEFUNGUJE SERVER")
+            serversocket.close()
+            break
         else:
-            check = False
-
-thread_send = thread.start_new_thread(client_send, (serversocket,))
+            print(msg.decode("utf-8"))
 
 thread_receive = thread.start_new_thread(client_receive, (serversocket,))
+client_send(serversocket)
 #140175549167360
