@@ -15,7 +15,7 @@ def clients(server):
         con, address = server.accept()  # prijmi clienta
         thread_con = thread.start_new_thread(chat, (con, clients, address,))
         clients.append(con) #https://www.youtube.com/watch?v=D0SLpD7JvZI
-        con.send(bytes("\n[SERVER->YOU] You have joined chat.", "utf-8"))
+        con.send(bytes("[SERVER->YOU] You have joined chat.", "utf-8"))
         print(f"[{address}]: connected")
 
 def chat(con, clients, address):
@@ -31,10 +31,7 @@ def chat(con, clients, address):
         else:
             print(msg.decode("utf-8"))
             for client in clients:
-                if client == con:
-                    pass
-                else:
-                    client.send(msg)
+                client.send(msg)
         #print(msg.decode("utf-8"))
 
 clients(server)

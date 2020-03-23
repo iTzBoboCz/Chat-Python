@@ -2,51 +2,88 @@ import socket
 import _thread as thread
 import re
 import tkinter as tk
+from tkinter import messagebox as mb
 import os
 
 root = tk.Tk()
+
+# msg_field = tk.StringVar()
+# msg_field.set("Type your messages here.")
+#
+# entry_field = tk.Entry(root, textvariable=my_msg)
+# entry_field.bind('<FocusIn>', on_entry_click)
+# entry_field.bind("<Return>", send)
+# entry_field.pack()
+# send_button = Button(root, text="Send", command=send)
+# send_button.pack()
 
 class MainApp(tk.Frame):
     def __init__(self, root):
         tk.Frame.__init__(self, root)
 
+        # nastavení okna
         self.root = root
-        self.root.configure(bg = "grey")
-        self.root.title("OnLuk Super-Chat v0")
-        self.root.geometry("1000x500")
-        self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.root.configure(bg = "grey") #barva
+        self.root.title("OnLuk Super-Chat v0") #nazev okna
+        self.root.geometry("960x540") #rozmer
+        self.root.minsize(960,540)
 
         host = socket.gethostname()#"89.176.78.154" #doma pouze socket.gethostname()
         port = 2205
 
+        self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serversocket.connect((host, port))
 
-        while True:
-            nick = input("Vložte svou přezdívku:\n ")
-
-            if nick != "":
-                if re.search("\s|\W", nick):
-                    print("Přezdívka obsahuje nepovolené znaky (mezeru nebo speciální znaky)")
-                else:
-                    self.nick = nick
-                    break
 
         self.stop = False
 
+        self.messagesList = tk.Listbox(self.root, height=20 , width=50)
+        #self.messagesScroll = tk.Scrollbar(self.messagesList, command=self.messagesList.yview)
+        #self.messagesList.configure(yscrollcommand=self.messagesScroll.set)
+        self.messagesList.pack(side=tk.TOP)
+        #self.messagesScroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # tvorba inputů
+        self.label_text = tk.StringVar()
+        self.label_text.set("Zadejte svou přezdívku")
+        self.label = tk.Label(self.root, textvariable=self.label_text)
+        self.label.pack()
+
+        #self.user_input.set("Sem vložte svou zprávu: ")
+        self.nick = ""
+        self.nickname_input = tk.StringVar()
+        self.nickname_field = tk.Entry(self.root, textvariable=self.nickname_input)
+        self.nickname_field.pack()
+
+        self.user_input = tk.StringVar()
+        self.input_field = tk.Entry(self.root, textvariable=self.user_input, state="disabled")
+        self.input_field.pack()
+        self.input_button = tk.Button(self.root, text="Odeslat", command=self.client_send)
+        self.input_button.pack()
+
         self.thread_receive = thread.start_new_thread(self.client_receive, ())
-        self.thread_send = thread.start_new_thread(self.client_send, ())
 
     def client_send(self):
-        while True:
-            if self.stop:
-                break
-            #print(self.nick+": ")
-            msg = input(self.nick+": ")
+        if self.nick == "":
+            nick = self.nickname_field.get()
+            if re.search("\s|\W", nick):
+                mb.showerror(title="CHYBA!", message="Přezdívka obsahuje nepovolené znaky (mezeru nebo speciální znaky)")
+            else:
+                self.nick = nick
+                self.input_field.configure(state="normal")
+                self.nickname_field.configure(state="disabled")
+                self.label_text.set("Zadejte zprávu")
+                return
+        if self.stop == True:
+            return
+        msg = self.user_input.get()
 
-            if msg == "":
-                pass
+        if msg == "":
+            return
 
-            self.serversocket.send(bytes(self.nick+": "+msg, "utf-8"))
+        self.serversocket.send(bytes(self.nick+": "+msg, "utf-8"))
+
+        self.input_field.delete(0, tk.END)
 
     def client_receive(self):
         while True:
@@ -56,63 +93,14 @@ class MainApp(tk.Frame):
             if not msg:
                 print("NEFUNGUJE SERVER")
                 self.serversocket.close()
+                self.stop = True
+                self.root.quit()
                 break
             else:
-                print(msg.decode("utf-8"))
-                #msg_list.insert(tk.END, msg)
+                self.messagesList.insert(tk.END, msg.decode("utf-8"))
 
 app = MainApp(root)
 app.pack()
 root.mainloop()
-app.stop = True
-'''window = tk.Tk()
-title = window.title("OnLuk Chat")
-frame = window.configure(width=1000, height=500, bg="grey")
-
-scrollbar = tk.Scrollbar(window)  # To navigate through past messages.
-msg_list = tk.Listbox(window, height=15, width=50, yscrollcommand=scrollbar.set)
-msg_list.pack(side=tk.LEFT, fill=tk.BOTH)
-msg_list.pack()
-# Following will contain the messages.
-scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-# entry_field = tk.Entry(top, textvariable=msg.get())
-# entry_field.bind("<Return>", send)
-
-serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-host = socket.gethostname()#"89.176.78.154" #doma pouze socket.gethostname()
-port = 2205
-
-serversocket.connect((host, port))
-
-while True:
-    nick = input("Vložte svou přezdívku:\n ")
-
-    if nick != "":
-        if re.search("\s|\W", nick):
-            print("Přezdívka obsahuje nepovolené znaky (mezeru nebo speciální znaky)")
-        else:
-            break
-def client_send(serversocket):
-    while True:
-        print("Zadejte zprávu:")
-        msg = input()
-        serversocket.send(bytes(nick+": "+msg, "utf-8"))
-
-def client_receive(serversocket):
-    while True:
-        msg = serversocket.recv(1024)
-        if not msg:
-            print("NEFUNGUJE SERVER")
-            serversocket.close()
-            break
-        else:
-            print(msg.decode("utf-8"))
-            msg_list.insert(tk.END, msg)
-
-client_send(serversocket)
-thread_receive = thread.start_new_thread(client_receive, (serversocket,))
-window.mainloop()
-'''
+app.stop = True #zastavit app po zavreni okna
 #140175549167360
