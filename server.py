@@ -14,7 +14,7 @@ def clients(server):
     while True:
         con, address = server.accept()  # prijmi clienta
         thread_con = thread.start_new_thread(chat, (con, clients, address,))
-        clients.append(con) #https://www.youtube.com/watch?v=D0SLpD7JvZI
+        clients.append(con)
         con.send(bytes("[SERVER->YOU] You have joined chat.", "utf-8"))
         print(f"[{address}]: connected")
 

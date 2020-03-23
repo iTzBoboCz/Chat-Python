@@ -3,19 +3,9 @@ import _thread as thread
 import re
 import tkinter as tk
 from tkinter import messagebox as mb
-import os
+#import textwrap as tw
 
 root = tk.Tk()
-
-# msg_field = tk.StringVar()
-# msg_field.set("Type your messages here.")
-#
-# entry_field = tk.Entry(root, textvariable=my_msg)
-# entry_field.bind('<FocusIn>', on_entry_click)
-# entry_field.bind("<Return>", send)
-# entry_field.pack()
-# send_button = Button(root, text="Send", command=send)
-# send_button.pack()
 
 class MainApp(tk.Frame):
     def __init__(self, root):
@@ -37,19 +27,19 @@ class MainApp(tk.Frame):
 
         self.stop = False
 
-        self.messagesList = tk.Listbox(self.root, height=20 , width=50)
-        #self.messagesScroll = tk.Scrollbar(self.messagesList, command=self.messagesList.yview)
-        #self.messagesList.configure(yscrollcommand=self.messagesScroll.set)
+        self.messagesList = tk.Listbox(self.root, height=20, width=50)
+        # self.messagesScroll = tk.Scrollbar(self.messagesList, orient="vertical", command=self.messagesList.yview)
+        # self.messagesList.configure(yscrollcommand=self.messagesScroll.set)
+        self.messagesList.grid(row=0, column=0)
+        # self.messagesScroll.grid(row=1, column=1, sticky=tk.N+tk.S+tk.E)
         self.messagesList.pack(side=tk.TOP)
-        #self.messagesScroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         # tvorba inputů
         self.label_text = tk.StringVar()
         self.label_text.set("Zadejte svou přezdívku")
-        self.label = tk.Label(self.root, textvariable=self.label_text)
+        self.label = tk.Label(self.root, textvariable=self.label_text, pady=5, padx=5)
         self.label.pack()
 
-        #self.user_input.set("Sem vložte svou zprávu: ")
         self.nick = ""
         self.nickname_input = tk.StringVar()
         self.nickname_field = tk.Entry(self.root, textvariable=self.nickname_input)
@@ -66,7 +56,9 @@ class MainApp(tk.Frame):
     def client_send(self):
         if self.nick == "":
             nick = self.nickname_field.get()
-            if re.search("\s|\W", nick):
+            if nick == "":
+                mb.showerror(title="CHYBA!", message="Přezdívka nesmí být prázná!")
+            elif re.search("\s|\W", nick):
                 mb.showerror(title="CHYBA!", message="Přezdívka obsahuje nepovolené znaky (mezeru nebo speciální znaky)")
             else:
                 self.nick = nick
@@ -80,8 +72,13 @@ class MainApp(tk.Frame):
 
         if msg == "":
             return
+        msg = self.nick+": "+msg
 
-        self.serversocket.send(bytes(self.nick+": "+msg, "utf-8"))
+        # delka listboxu - uživatel a ": "
+        # wrapper = tw.TextWrapper(width=(50 - (len(self.nick) + 2)))
+        # msg = wrapper.wrap(text=msg)
+        # msg = ("\n" + " "*(len(self.nick)+ 2)).join(msg)
+        self.serversocket.send(bytes(msg, "utf-8"))
 
         self.input_field.delete(0, tk.END)
 
@@ -103,4 +100,3 @@ app = MainApp(root)
 app.pack()
 root.mainloop()
 app.stop = True #zastavit app po zavreni okna
-#140175549167360
