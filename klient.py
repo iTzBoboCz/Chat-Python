@@ -31,11 +31,15 @@ class MainApp(tk.Frame):
                     self.nick = nick
                     break
 
-        thread_receive = thread.start_new_thread(self.client_receive, ())
-        thread_send = thread.start_new_thread(self.client_send, ())
+        self.stop = False
+
+        self.thread_receive = thread.start_new_thread(self.client_receive, ())
+        self.thread_send = thread.start_new_thread(self.client_send, ())
 
     def client_send(self):
         while True:
+            if self.stop:
+                break
             #print(self.nick+": ")
             msg = input(self.nick+": ")
 
@@ -46,6 +50,8 @@ class MainApp(tk.Frame):
 
     def client_receive(self):
         while True:
+            if self.stop:
+                break
             msg = self.serversocket.recv(1024)
             if not msg:
                 print("NEFUNGUJE SERVER")
@@ -58,7 +64,7 @@ class MainApp(tk.Frame):
 app = MainApp(root)
 app.pack()
 root.mainloop()
-
+app.stop = True
 '''window = tk.Tk()
 title = window.title("OnLuk Chat")
 frame = window.configure(width=1000, height=500, bg="grey")
