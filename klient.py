@@ -22,10 +22,14 @@ class MainApp(tk.Frame):
         port = 2205
 
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.serversocket.connect((host, port))
-
 
         self.stop = False
+
+        try:
+            self.serversocket.connect((host, port))
+        except:
+            self.stop = True
+            pass
 
         self.messagesList = tk.Listbox(self.root, height=20, width=50)
         # self.messagesScroll = tk.Scrollbar(self.messagesList, orient="vertical", command=self.messagesList.yview)
@@ -88,10 +92,9 @@ class MainApp(tk.Frame):
                 break
             msg = self.serversocket.recv(1024)
             if not msg:
-                print("NEFUNGUJE SERVER")
                 self.serversocket.close()
                 self.stop = True
-                self.root.quit()
+                self.messagesList.insert(tk.END, "[ERROR] NENÍ MOŽNÉ SE PŘIPOJIT K SERVERU")
                 break
             else:
                 self.messagesList.insert(tk.END, msg.decode("utf-8"))

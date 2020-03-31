@@ -12,28 +12,29 @@ except:
     logfile = open("server_log.db", "w+")
     logfile.close()
 
-try:
-    logdb.execute("""CREATE TABLE logs (
-        `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-        `logType` VARCHAR(30) NOT NULL,
-        `logMessage` varchar(75) NOT NULL,
-        `date` DATE NOT NULL DEFAULT (datetime('now','localtime'))
-    )""")
-    #logdb.fetchone()
-except:
-    pass
-
 class Server:
     def __init__(self):
+
         try:
             # připojení k DB
-            self.logdb = sql.connect("server_log.db")
+            self.db = sql.connect("server_log.db")
 
             # nastavení kurzoru (můžeme vypisovat výsledky z DB)
-            self.logdb = self.logdb.cursor()
+            self.db = self.db.cursor()
         except:
             print("[ERROR] Serveru se nepodařilo spojit se s databází na úchovu logů!")
             exit()
+
+        try:
+            self.db.execute("""CREATE TABLE logs (
+                `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                `logType` VARCHAR(30) NOT NULL,
+                `logMessage` varchar(75) NOT NULL,
+                `date` DATE NOT NULL DEFAULT (datetime('now','localtime'))
+            )""")
+            #db.fetchone()
+        except:
+            pass
 
         self.port = 2205
         self.host = socket.gethostname()
@@ -41,52 +42,58 @@ class Server:
 
         self.server.bind((self.host, self.port))
         self.server.listen()
-        self.insertData(["Info", "Server Start"], self.logdb)
+        self.insertData(["Info", "Server Start"], self.db)
 
-        atexit.register(self.insertData, data = ["Info", "Server Stopped"], logdb = self.logdb)
+        atexit.register(self.stop)
 
-    def insertData(self, data, logdb):
+    def insertData(self, data, db):
         """
         logType - Info (Status, ), Error, Warning, Message
         """
 
-        logdb.execute("INSERT INTO logs ('logType', 'logMessage') VALUES (?, ?)", data)
-        logdb.execute("COMMIT")
+        db.execute("INSERT INTO logs ('logType', 'logMessage') VALUES (?, ?)", data)
+        db.execute("COMMIT")
 
     def start(self):
         self.clients = []
         while True:
-            con, address = self.server.accept()  # prijmi clienta
-            thread_con = thread.start_new_thread(self.chat, (con, self.clients, address,))
-            self.clients.append(con)
-            con.send(bytes("[SERVER->YOU] You have joined chat.", "utf-8"))
+            conn, address = self.server.accept()  # prijmi clienta
+            thread_conn = thread.start_new_thread(self.chat, (conn, self.clients, address,))
+            self.clients.append({"address": address, "conn": conn})
+            conn.send(bytes("[SERVER->YOU] You have joined chat.", "utf-8"))
             print(f"[{address}]: connected")
-            self.insertData(["Message", f"[{address}]: connected"], self.logdb)
+            self.insertData(["Message", f"[{address}]: connected"], self.db)
 
-    def chat(self, con, clients, address):
+    def chat(self, conn, clients, address):
         try:
             # připojení k DB
-            logdb = sql.connect("server_log.db")
+            db = sql.connect("server_log.db")
 
             # nastavení kurzoru (můžeme vypisovat výsledky z DB)
-            logdb = logdb.cursor()
+            db = db.cursor()
         except:
             print("[ERROR] Serveru se nepodařilo spojit se s databází na úchovu logů!")
             return()
         while True:
             #if is not None => pokud není prázdná
             # pokud existuje
-            msg = con.recv(1024) #zprava
+            msg = conn.recv(1024) #zprava
             if not msg:
                 print(f"[{address}]: disconnected")
-                self.insertData(["Message", f"[{address}]: disconnected"], logdb)
-                self.clients.remove(con)
-                con.close()
+                self.insertData(["Message", f"[{address}]: disconnected"], db)
+                conn.close()
+                self.clients.remove(conn)
                 break
             else:
                 print(msg.decode("utf-8"))
                 for client in self.clients:
-                    client.send(msg)
+                    client["conn"].send(msg)
+    def stop(self):
+        for client in self.clients:
+            self.insertData(["Message", f"[{client['address']}]: disconnected"], self.db)
+            client["conn"].close()
+            self.clients.remove(client)
+        self.insertData(["Info", "Server Stopped"], self.db)
 
 if __name__ == "__main__":
     server = Server()
