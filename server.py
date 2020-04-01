@@ -6,6 +6,7 @@ import os
 import atexit
 import json
 
+# vytvoření pozadí + názvu aplikace
 root = Tk()
 root.configure(background='#bdc3c7')
 root.geometry('1000x500')
@@ -14,7 +15,6 @@ root.maxsize(1000, 500)
 root.title("OnLuk Super-Chat Server v0.4") #nazev okna
 
 # vytvoření/otevření souboru s logy
-
 try:
     logfile = open("server_log.db", "r")
     logfile.close()
@@ -35,6 +35,7 @@ class Server:
         self.logList = Listbox(self.serverFrame,width=150, height=20,bg="#ecf0f1", yscrollcommand = self.scrollbar.set)
         self.logList.pack()
 
+        # tlačítka na start, stop a restart
         self.buttonStart = Button(root, text="Start",width=10, height=3,font=("Arial", 20, "bold"),  fg="white", bg="#2ecc71", command=self.start)
         self.buttonStop = Button(root, text="Stop", width=10, height=3,font=("Arial", 20, "bold"), fg="white", bg="#c0392b", state="disabled", command=self.stop)
         self.buttonRestart = Button(root, text="Restart", width=10, height=3,font=("Arial", 20, "bold"), fg="white", bg="#95a5a6", state="disabled", command=self.restart)
@@ -113,6 +114,7 @@ class Server:
 
         atexit.register(self.exitProgram)
 
+    # metoda, která obstarává logování do DB
     def insertData(self, data, db):
         """
         logType - Info (Status, ), Error, Warning, Message
@@ -121,6 +123,7 @@ class Server:
         db.execute("INSERT INTO logs ('logType', 'logMessage') VALUES (?, ?)", data)
         db.execute("COMMIT")
 
+    # zapnutí serveru
     def start(self):
         self.buttonStart.configure(state="disabled")
         self.buttonStop.configure(state="normal")
@@ -132,6 +135,7 @@ class Server:
         self.insertData(["Info", "Server Start"], self.db)
         thread_conn = thread.start_new_thread(self.connectClients, ())
 
+    # připojení jednotlivého klienta
     def connectClients(self):
         try:
             # připojení k DB
@@ -152,6 +156,7 @@ class Server:
                 self.logList.insert(END, f"[{address}]: connected")
                 self.insertData(["Message", f"[{address}]: connected"], db)
 
+    # přijímání a odesílání dat; uživatel = jedno vlákno
     def chat(self, conn, clients, address):
         try:
             # připojení k DB
@@ -174,13 +179,12 @@ class Server:
                     conn.close()
                     self.clients.remove({"address": address, "conn": conn})
                     break
-                else:
-                    #self.logList.insert(END, f"[{address}]: disconnected") msg
 
+                else:
                     msgdata = msg.decode("utf-8")
                     msgdata = json.loads(msgdata)
 
-    #{"type": "register", "nick": "test", "password": "56af4bde70a47ae7d0f1ebb30e45ed336165d5c9ec00ba9a92311e33a4256d74"}
+                    # ukázka, jak vypadá msgdata: {"type": "register", "nick": "test", "password": "56af4bde70a47ae7d0f1ebb30e45ed336165d5c9ec00ba9a92311e33a4256d74"}
                     if "type" in msgdata:
                         if msgdata["type"] == "register":
                             db.execute("SELECT COUNT(nickname) FROM users WHERE nickname = ?", (msgdata["nick"],))
@@ -194,8 +198,12 @@ class Server:
                             else:
                                 db.execute("INSERT INTO users (nickname, password) VALUES (?, ?)", (msgdata["nick"], msgdata["password"]))
 
+                                db.execute("SELECT ID FROM users WHERE nickname = ? AND password = ?", (msgdata["nick"],msgdata["password"]))
+                                userID = db.fetchone()[0]
+
                                 success = {
                                     "type": "success",
+                                    "ID": userID,
                                     "msg": "[SERVER] Váš účet byl úspěšně zaregistrován!"
                                 }
                                 success = json.dumps(success)
@@ -223,12 +231,19 @@ class Server:
                                 conn.send(bytes(error, "utf-8"))
                         elif msgdata["type"] == "msg":
                             for client in self.clients:
+                                print(msgdata["id"])
                                 client["conn"].send(bytes(json.dumps(msgdata), "utf-8"))
             except:
+                print("TADY JSI")
                 pass
+
+    # zastavení serveru
     def stop(self):
 
+        # vypíná vlákna (uživatele)
         self.stopped = True
+
+        # změní status tlačítek
         self.buttonStart.configure(state="normal")
         self.buttonStop.configure(state="disabled")
         self.buttonRestart.configure(state="disabled")
@@ -240,12 +255,13 @@ class Server:
         #     self.clients.remove(client)
 
         self.logList.insert(END, "[SERVER] Server byl zastaven.")
-        #self.insertData(["Info", "Server Stopped"], self.db)
 
+    # restart serveru
     def restart(self):
         self.stop()
         self.start()
 
+    # pro případ, že server ukončíme křížkem
     def exitProgram(self):
         if self.stopped == False:
             try:

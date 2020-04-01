@@ -8,6 +8,7 @@ from time import sleep
 from lib import *
 #import textwrap as tw
 
+# vytvoření pozadí + názvu aplikace
 root = Tk()
 root.configure(background='#bdc3c7')
 root.geometry('1000x500')
@@ -164,6 +165,7 @@ class MainApp:
                     messagebox.showinfo(title="SUCCESS", message=msg["msg"])
 
                     self.nick = nick
+                    self.id = msg["ID"]
                     self.destroyForm()
                     self.chat()
             except:
@@ -199,6 +201,7 @@ class MainApp:
                     messagebox.showinfo(title="SUCCESS", message=msg["msg"])
 
                     self.nick = nick
+                    self.id = msg["ID"]
                     self.destroyForm()
                     self.chat()
             except:
@@ -213,15 +216,14 @@ class MainApp:
             return
         msg = self.messageEntry.get("1.0",END)
 
-        if re.search("\s", msg):
+        if re.search("^\s", msg):
             return
         msgjson = {
             "type": "msg",
+            "id": self.id,
             "nick": self.nick,
-            "msg": msg,
+            "msg": msg
         }
-
-
         msgjson = json.dumps(msgjson)
         #msg = self.nick+": "+msg
 
@@ -233,6 +235,7 @@ class MainApp:
             self.serversocket.send(bytes(msgjson, "utf-8"))
             self.messageEntry.delete("1.0", END)
         except:
+            print("TADY JSI")
             pass
 
     def client_receive(self):
@@ -244,12 +247,6 @@ class MainApp:
                 if not msg:
                     self.serversocket.close()
                     self.messageList.insert(END, "[SERVER] Nefunguje spojení se serverem. Za 2 sekundy Vás zkusíme připojit znovu.")
-
-                    #Select the new item
-                    self.messageList.select_set(END)
-
-                    #Set the scrollbar to the end of the listbox
-                    self.messageList.yview(END)
                     self.reconnect()
                 else:
                     msg = msg.decode("utf-8")
