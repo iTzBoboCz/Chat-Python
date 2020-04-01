@@ -203,9 +203,13 @@ class Server:
 
                         elif msgdata["type"] == "login":
                             db.execute("SELECT COUNT(ID) FROM users WHERE nickname = ? AND password = ?", (msgdata["nick"],msgdata["password"]))
-                            if db.fetchone()[0] != 0:
+                            userID = db.fetchone()[0]
+                            if userID != 0:
+                                db.execute("SELECT ID FROM users WHERE nickname = ? AND password = ?", (msgdata["nick"],msgdata["password"]))
+                                userID = db.fetchone()[0]
                                 success = {
                                     "type": "success",
+                                    "ID": userID,
                                     "msg": "[SERVER] Byli jste úspěšně přihlášeni!"
                                 }
                                 success = json.dumps(success)
@@ -222,7 +226,6 @@ class Server:
                                 client["conn"].send(bytes(json.dumps(msgdata), "utf-8"))
             except:
                 pass
-
     def stop(self):
 
         self.stopped = True
@@ -236,7 +239,7 @@ class Server:
         #     client["conn"].close()
         #     self.clients.remove(client)
 
-        self.logList.insert(END, "[SERVER]: Stopped")
+        self.logList.insert(END, "[SERVER] Server byl zastaven.")
         #self.insertData(["Info", "Server Stopped"], self.db)
 
     def restart(self):
@@ -251,7 +254,6 @@ class Server:
                     client["conn"].close()
                     self.clients.remove(client)
             except:
-                print("error 232")
                 pass
             self.insertData(["Info", "Server Stopped"], self.db)
 

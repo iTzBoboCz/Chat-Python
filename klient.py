@@ -181,7 +181,6 @@ class MainApp:
             "nick": nick,
             "password": hashPassword(self, password)
         }
-
         jsonData = json.dumps(jsonData)
         try:
             self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -213,9 +212,9 @@ class MainApp:
         if self.stop == True:
             return
         msg = self.messageEntry.get("1.0",END)
-        if msg == "":
-            return
 
+        if re.search("\s", msg):
+            return
         msgjson = {
             "type": "msg",
             "nick": self.nick,
@@ -234,7 +233,6 @@ class MainApp:
             self.serversocket.send(bytes(msgjson, "utf-8"))
             self.messageEntry.delete("1.0", END)
         except:
-            print("test")
             pass
 
     def client_receive(self):
