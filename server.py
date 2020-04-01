@@ -11,7 +11,7 @@ root.configure(background='#bdc3c7')
 root.geometry('1000x500')
 root.minsize(1000, 500)
 root.maxsize(1000, 500)
-root.title("OnLuk Super-Chat Server v0.2") #nazev okna
+root.title("OnLuk Super-Chat Server v0.3") #nazev okna
 
 # vytvoření/otevření souboru s logy
 
@@ -50,7 +50,7 @@ class Server:
             # nastavení kurzoru (můžeme vypisovat výsledky z DB)
             self.db = self.db.cursor()
         except:
-            self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází")
+            self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází!")
             exit()
 
         # vytvoření tabulky logs
@@ -133,17 +133,24 @@ class Server:
         thread_conn = thread.start_new_thread(self.connectClients, ())
 
     def connectClients(self):
+        try:
+            # připojení k DB
+            db = sql.connect("server_log.db")
 
+            # nastavení kurzoru (můžeme vypisovat výsledky z DB)
+            db = db.cursor()
+        except:
+            self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází!")
+            return
         while self.stopped == False:
             conn, address = self.server.accept()  # prijmi clienta
             thread_conn = thread.start_new_thread(self.chat, (conn, self.clients, address,))
 
             self.clients.append({"address": address, "conn": conn})
 
-            conn.send(bytes("[SERVER->YOU] You have joined chat.", "utf-8"))
-
-            self.logList.insert(END, f"[{address}]: connected")
-            self.insertData(["Message", f"[{address}]: connected"], self.db)
+            if self.stopped == False:
+                self.logList.insert(END, f"[{address}]: connected")
+                self.insertData(["Message", f"[{address}]: connected"], db)
 
     def chat(self, conn, clients, address):
         try:
@@ -153,11 +160,12 @@ class Server:
             # nastavení kurzoru (můžeme vypisovat výsledky z DB)
             db = db.cursor()
         except:
-            self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází na úchovu logů!")
-            return()
+            self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází!")
+            return
         while self.stopped == False:
             #if is not None => pokud není prázdná
             # pokud existuje
+
             try:
                 msg = conn.recv(1024) #zprava
                 if not msg:
@@ -168,13 +176,56 @@ class Server:
                     break
                 else:
                     #self.logList.insert(END, f"[{address}]: disconnected") msg
-                    print(msg.decode("utf-8"))
-                    for client in self.clients:
-                        client["conn"].send(msg)
+
+                    msgdata = msg.decode("utf-8")
+                    msgdata = json.loads(msgdata)
+
+    #{"type": "register", "nick": "test", "password": "56af4bde70a47ae7d0f1ebb30e45ed336165d5c9ec00ba9a92311e33a4256d74"}
+                    if "type" in msgdata:
+                        if msgdata["type"] == "register":
+                            db.execute("SELECT COUNT(nickname) FROM users WHERE nickname = ?", (msgdata["nick"],))
+                            if db.fetchone()[0] != 0:
+                                error = {
+                                    "type": "error",
+                                    "msg": "[SERVER] Uživatel s touto přezdívkou již existuje!"
+                                }
+                                error = json.dumps(error)
+                                conn.send(bytes(error, "utf-8"))
+                            else:
+                                db.execute("INSERT INTO users (nickname, password) VALUES (?, ?)", (msgdata["nick"], msgdata["password"]))
+
+                                success = {
+                                    "type": "success",
+                                    "msg": "[SERVER] Váš účet byl úspěšně zaregistrován!"
+                                }
+                                success = json.dumps(success)
+                                conn.send(bytes(success, "utf-8"))
+
+                        elif msgdata["type"] == "login":
+                            db.execute("SELECT COUNT(nickname) FROM users WHERE nickname = ? AND password = ?", (msgdata["nick"],msgdata["password"]))
+                            if db.fetchone()[0] != 0:
+                                success = {
+                                    "type": "success",
+                                    "msg": "[SERVER] Byli jste úspěšně přihlášeni!"
+                                }
+                                success = json.dumps(success)
+                                conn.send(bytes(success, "utf-8"))
+                            else:
+                                error = {
+                                    "type": "error",
+                                    "msg": "[SERVER] Špatné heslo nebo přezdívka!"
+                                }
+                                error = json.dumps(error)
+                                conn.send(bytes(error, "utf-8"))
+                        elif msgdata["type"] == "msg":
+
+                            for client in self.clients:
+                                client["conn"].send(bytes(json.dumps(msgdata), "utf-8"))
             except:
                 pass
 
     def stop(self):
+
         self.stopped = True
         self.buttonStart.configure(state="normal")
         self.buttonStop.configure(state="disabled")
@@ -187,7 +238,7 @@ class Server:
         #     self.clients.remove(client)
 
         self.logList.insert(END, "[SERVER]: Stopped")
-        self.insertData(["Info", "Server Stopped"], self.db)
+        #self.insertData(["Info", "Server Stopped"], self.db)
 
     def restart(self):
         self.stop()
@@ -201,6 +252,7 @@ class Server:
                     client["conn"].close()
                     self.clients.remove(client)
             except:
+                print("error 232")
                 pass
             self.insertData(["Info", "Server Stopped"], self.db)
 
