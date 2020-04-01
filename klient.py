@@ -13,7 +13,7 @@ root.configure(background='#bdc3c7')
 root.geometry('1000x500')
 root.minsize(1000, 500)
 root.maxsize(1000, 500)
-root.title("OnLuk Super-Chat v0.3") #nazev okna
+root.title("OnLuk Super-Chat v0.4") #nazev okna
 
 class MainApp:
     def __init__(self):
@@ -21,13 +21,13 @@ class MainApp:
         self.host = socket.gethostname()#"89.176.78.154" #doma pouze socket.gethostname()
         self.port = 2205
 
-        self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        try:
-            self.serversocket.connect((self.host, self.port))
-        except:
-            # messagebox.showerror(title="Server", message="hesla se neshodují")
-            pass
+        # self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #
+        # try:
+        #     self.serversocket.connect((self.host, self.port))
+        # except:
+        #     # messagebox.showerror(title="Server", message="hesla se neshodují")
+        #     pass
 
         self.stop = False
 
@@ -148,8 +148,8 @@ class MainApp:
 
         jsonData = json.dumps(jsonData)
         try:
-            # self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            # self.serversocket.connect((self.host, self.port))
+            self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.serversocket.connect((self.host, self.port))
             self.serversocket.send(bytes(jsonData, "utf-8"))
         except:
             messagebox.showerror(title="ERROR", message="[SERVER] nepodařilo se spojit se serverem, zkuste to prosím později!")
@@ -184,8 +184,8 @@ class MainApp:
 
         jsonData = json.dumps(jsonData)
         try:
-            # self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            # self.serversocket.connect((self.host, self.port))
+            self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.serversocket.connect((self.host, self.port))
             self.serversocket.send(bytes(jsonData, "utf-8"))
         except:
             messagebox.showerror(title="ERROR", message="[SERVER] nepodařilo se spojit se serverem, zkuste to prosím později!")
@@ -232,7 +232,7 @@ class MainApp:
         # msg = ("\n" + " "*(len(self.nick)+ 2)).join(msg)
         try:
             self.serversocket.send(bytes(msgjson, "utf-8"))
-            self.messageEntry.insert(INSERT, "")
+            self.messageEntry.delete("1.0", END)
         except:
             print("test")
             pass

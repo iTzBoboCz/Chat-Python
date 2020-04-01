@@ -11,7 +11,7 @@ root.configure(background='#bdc3c7')
 root.geometry('1000x500')
 root.minsize(1000, 500)
 root.maxsize(1000, 500)
-root.title("OnLuk Super-Chat Server v0.3") #nazev okna
+root.title("OnLuk Super-Chat Server v0.4") #nazev okna
 
 # vytvoření/otevření souboru s logy
 
@@ -202,7 +202,7 @@ class Server:
                                 conn.send(bytes(success, "utf-8"))
 
                         elif msgdata["type"] == "login":
-                            db.execute("SELECT COUNT(nickname) FROM users WHERE nickname = ? AND password = ?", (msgdata["nick"],msgdata["password"]))
+                            db.execute("SELECT COUNT(ID) FROM users WHERE nickname = ? AND password = ?", (msgdata["nick"],msgdata["password"]))
                             if db.fetchone()[0] != 0:
                                 success = {
                                     "type": "success",
@@ -218,7 +218,6 @@ class Server:
                                 error = json.dumps(error)
                                 conn.send(bytes(error, "utf-8"))
                         elif msgdata["type"] == "msg":
-
                             for client in self.clients:
                                 client["conn"].send(bytes(json.dumps(msgdata), "utf-8"))
             except:
