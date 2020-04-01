@@ -225,17 +225,11 @@ class MainApp:
             "msg": msg
         }
         msgjson = json.dumps(msgjson)
-        #msg = self.nick+": "+msg
 
-        # delka listboxu - uživatel a ": "
-        # wrapper = tw.TextWrapper(width=(50 - (len(self.nick) + 2)))
-        # msg = wrapper.wrap(text=msg)
-        # msg = ("\n" + " "*(len(self.nick)+ 2)).join(msg)
         try:
             self.serversocket.send(bytes(msgjson, "utf-8"))
             self.messageEntry.delete("1.0", END)
         except:
-            print("TADY JSI")
             pass
 
     def client_receive(self):

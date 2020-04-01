@@ -230,13 +230,13 @@ class Server:
                                 error = json.dumps(error)
                                 conn.send(bytes(error, "utf-8"))
                         elif msgdata["type"] == "msg":
+                            # TODO: ukládání zpráv (níže)
+                            #db.execute("INSERT INTO messages (senderID, message) VALUES (?, ?)", (msgdata["id"] ,msgdata["msg"]))
+
                             for client in self.clients:
-                                print(msgdata["id"])
                                 client["conn"].send(bytes(json.dumps(msgdata), "utf-8"))
             except:
-                print("TADY JSI")
                 pass
-
     # zastavení serveru
     def stop(self):
 
