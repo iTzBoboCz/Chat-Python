@@ -22,14 +22,9 @@ class MainApp(tk.Frame):
         port = 2205
 
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serversocket.connect((host, port))
 
         self.stop = False
-
-        try:
-            self.serversocket.connect((host, port))
-        except:
-            self.stop = True
-            pass
 
         self.messagesList = tk.Listbox(self.root, height=20, width=50)
         # self.messagesScroll = tk.Scrollbar(self.messagesList, orient="vertical", command=self.messagesList.yview)
@@ -82,7 +77,10 @@ class MainApp(tk.Frame):
         # wrapper = tw.TextWrapper(width=(50 - (len(self.nick) + 2)))
         # msg = wrapper.wrap(text=msg)
         # msg = ("\n" + " "*(len(self.nick)+ 2)).join(msg)
-        self.serversocket.send(bytes(msg, "utf-8"))
+        try:
+            self.serversocket.send(bytes(msg, "utf-8"))
+        except:
+            pass
 
         self.input_field.delete(0, tk.END)
 
@@ -90,16 +88,21 @@ class MainApp(tk.Frame):
         while True:
             if self.stop:
                 break
-            msg = self.serversocket.recv(1024)
-            if not msg:
-                self.serversocket.close()
-                self.stop = True
-                self.messagesList.insert(tk.END, "[ERROR] NENÍ MOŽNÉ SE PŘIPOJIT K SERVERU")
-                break
-            else:
-                self.messagesList.insert(tk.END, msg.decode("utf-8"))
+            try:
+                msg = self.serversocket.recv(1024)
+                if not msg:
+                    print("NEFUNGUJE SERVER")
+                    self.serversocket.close()
+                    self.stop = True
+                    self.root.quit()
+                    break
+                else:
+                    self.messagesList.insert(tk.END, msg.decode("utf-8"))
+            except:
+                print("NEFUNGUJE SERVER")
 
-app = MainApp(root)
-app.pack()
-root.mainloop()
-app.stop = True #zastavit app po zavreni okna
+if __name__ == '__main__':
+    app = MainApp(root)
+    app.pack()
+    root.mainloop()
+    app.stop = True #zastavit app po zavreni okna
