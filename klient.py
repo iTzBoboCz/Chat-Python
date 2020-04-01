@@ -3,6 +3,8 @@ import _thread as thread
 import re
 import tkinter as tk
 from tkinter import messagebox as mb
+import json
+from time import sleep
 #import textwrap as tw
 
 root = tk.Tk()
@@ -18,19 +20,22 @@ class MainApp(tk.Frame):
         self.root.geometry("960x540") #rozmer
         self.root.minsize(960,540)
 
-        host = socket.gethostname()#"89.176.78.154" #doma pouze socket.gethostname()
-        port = 2205
+        self.host = socket.gethostname()#"89.176.78.154" #doma pouze socket.gethostname()
+        self.port = 2205
 
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.serversocket.connect((host, port))
+
+        try:
+            self.serversocket.connect((self.host, self.port))
+        except:
+            self.reconnect()
 
         self.stop = False
 
         self.messagesList = tk.Listbox(self.root, height=20, width=50)
-        # self.messagesScroll = tk.Scrollbar(self.messagesList, orient="vertical", command=self.messagesList.yview)
-        # self.messagesList.configure(yscrollcommand=self.messagesScroll.set)
+
         self.messagesList.grid(row=0, column=0)
-        # self.messagesScroll.grid(row=1, column=1, sticky=tk.N+tk.S+tk.E)
+
         self.messagesList.pack(side=tk.TOP)
 
         # tvorba inputů
@@ -68,11 +73,18 @@ class MainApp(tk.Frame):
         if self.stop == True:
             return
         msg = self.user_input.get()
+        msgjson = {
+            "nick": self.nick,
+            "msg": msg,
+        }
 
         if msg == "":
             return
+
+        msgjson = json.dumps(msgjson)
         msg = self.nick+": "+msg
 
+        print(msgjson)
         # delka listboxu - uživatel a ": "
         # wrapper = tw.TextWrapper(width=(50 - (len(self.nick) + 2)))
         # msg = wrapper.wrap(text=msg)
@@ -91,15 +103,25 @@ class MainApp(tk.Frame):
             try:
                 msg = self.serversocket.recv(1024)
                 if not msg:
-                    print("NEFUNGUJE SERVER")
                     self.serversocket.close()
-                    self.stop = True
-                    self.root.quit()
-                    break
+                    self.messagesList.insert(tk.END, "[SERVER] Nefunguje spojení se serverem. Za 2 sekundy Vás zkusíme připojit znovu.")
+                    self.reconnect()
                 else:
                     self.messagesList.insert(tk.END, msg.decode("utf-8"))
             except:
-                print("NEFUNGUJE SERVER")
+                self.messagesList.insert(tk.END, "[SERVER] Nefunguje spojení se serverem.")
+                break
+    def reconnect(self):
+        while True:
+            sleep(2)
+            try:
+                self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.serversocket.connect((self.host, self.port))
+
+            except:
+                pass
+            else:
+                break
 
 if __name__ == '__main__':
     app = MainApp(root)

@@ -4,6 +4,7 @@ import sqlite3 as sql
 from tkinter import *
 import os
 import atexit
+import json
 
 root = Tk()
 root.configure(background='#bdc3c7')
@@ -49,18 +50,34 @@ class Server:
             # nastavení kurzoru (můžeme vypisovat výsledky z DB)
             self.db = self.db.cursor()
         except:
-            self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází na úchovu logů!")
+            self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází")
             exit()
 
         try:
+            #db server log
             self.db.execute("""CREATE TABLE logs (
                 `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 `logType` VARCHAR(30) NOT NULL,
                 `logMessage` varchar(75) NOT NULL,
                 `date` DATE NOT NULL DEFAULT (datetime('now','localtime'))
             )""")
-            #db.fetchone()
+            #db messages
+            self.db.execute("""CREATE TABLE messages (
+                `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                `senderID` INT NOT NULL,
+                `receiverID` INT NULL,
+                `message` varchar(250) NOT NULL DEFAULT,
+                `date` DATE NOT NULL DEFAULT (datetime('now','localtime'))
+            )""")
+            #db users
+            self.db.execute("""CREATE TABLE users (
+                `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                `nickname` VARCHAR(30) NOT NULL,
+                `password` varchar(75) NOT NULL,
+            )""")
+
         except:
+            self.logList.insert(END, "[SERVER] Připojení k databázi bylo úspěšné")
             pass
 
         self.port = 2205
@@ -87,7 +104,7 @@ class Server:
         self.clients = []
 
         self.stopped = False
-        self.logList.insert(END, "[SERVER]: start")
+        self.logList.insert(END, "[SERVER] Server byl zapnut.")
         self.insertData(["Info", "Server Start"], self.db)
         thread_conn = thread.start_new_thread(self.connectClients, ())
 
@@ -96,10 +113,14 @@ class Server:
         while self.stopped == False:
             conn, address = self.server.accept()  # prijmi clienta
             thread_conn = thread.start_new_thread(self.chat, (conn, self.clients, address,))
+
             self.clients.append({"address": address, "conn": conn})
+
             conn.send(bytes("[SERVER->YOU] You have joined chat.", "utf-8"))
+
             self.logList.insert(END, f"[{address}]: connected")
-            #self.insertData(["Message", f"[{address}]: connected"], self.db)
+            self.insertData(["Message", f"[{address}]: connected"], self.db)
+
     def chat(self, conn, clients, address):
         try:
             # připojení k DB
@@ -110,7 +131,7 @@ class Server:
         except:
             self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází na úchovu logů!")
             return()
-        while True:
+        while self.stopped == False:
             #if is not None => pokud není prázdná
             # pokud existuje
             try:
@@ -119,28 +140,27 @@ class Server:
                     self.logList.insert(END, f"[{address}]: disconnected")
                     self.insertData(["Message", f"[{address}]: disconnected"], db)
                     conn.close()
-                    self.clients.remove(conn)
+                    self.clients.remove({"address": address, "conn": conn})
                     break
                 else:
+                    #self.logList.insert(END, f"[{address}]: disconnected") msg
                     print(msg.decode("utf-8"))
                     for client in self.clients:
                         client["conn"].send(msg)
             except:
                 pass
+
     def stop(self):
         self.stopped = True
         self.buttonStart.configure(state="normal")
         self.buttonStop.configure(state="disabled")
         self.buttonRestart.configure(state="disabled")
 
-        try:
-            for client in self.clients:
-                self.logList.insert(END, f"[{client['address']}]: disconnected")
-                self.insertData(["Message", f"[{client['address']}]: disconnected"], self.db)
-                client["conn"].close()
-                self.clients.remove(client)
-        except:
-            pass
+        # for client in self.clients:
+        #     self.logList.insert(END, f"[{client['address']}]: disconnected")
+        #     self.insertData(["Message", f"[{client['address']}]: disconnected"], self.db)
+        #     client["conn"].close()
+        #     self.clients.remove(client)
 
         self.logList.insert(END, "[SERVER]: Stopped")
         self.insertData(["Info", "Server Stopped"], self.db)
@@ -148,7 +168,6 @@ class Server:
     def restart(self):
         self.stop()
         self.start()
-
 
     def exitProgram(self):
         if self.stopped == False:
