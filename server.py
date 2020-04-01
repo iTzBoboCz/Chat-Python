@@ -11,7 +11,7 @@ root.configure(background='#bdc3c7')
 root.geometry('1000x500')
 root.minsize(1000, 500)
 root.maxsize(1000, 500)
-root.title("OnLuk Super-Chat Server v0") #nazev okna
+root.title("OnLuk Super-Chat Server v0.2") #nazev okna
 
 # vytvoření/otevření souboru s logy
 
@@ -53,32 +53,56 @@ class Server:
             self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází")
             exit()
 
+        # vytvoření tabulky logs
         try:
-            #db server log
             self.db.execute("""CREATE TABLE logs (
-                `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                `logType` VARCHAR(30) NOT NULL,
-                `logMessage` varchar(75) NOT NULL,
-                `date` DATE NOT NULL DEFAULT (datetime('now','localtime'))
+            `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            `logType` VARCHAR(30) NOT NULL,
+            `logMessage` VARCHAR(75) NOT NULL,
+            `date` DATE NOT NULL DEFAULT (datetime('now','localtime'))
             )""")
-            #db messages
-            self.db.execute("""CREATE TABLE messages (
-                `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                `senderID` INT NOT NULL,
-                `receiverID` INT NULL,
-                `message` varchar(250) NOT NULL DEFAULT,
-                `date` DATE NOT NULL DEFAULT (datetime('now','localtime'))
-            )""")
-            #db users
-            self.db.execute("""CREATE TABLE users (
-                `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                `nickname` VARCHAR(30) NOT NULL,
-                `password` varchar(75) NOT NULL,
-            )""")
-
         except:
-            self.logList.insert(END, "[SERVER] Připojení k databázi bylo úspěšné")
             pass
+        else:
+            self.logList.insert(END, "[DB] Tabulka 'logs' byla vytvořena!")
+            self.insertData(["DB", "Vytvořena tabulka 'logs'"], self.db)
+
+        # vytvoření tabulky messages
+        try:
+            self.db.execute("""CREATE TABLE messages (
+            `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            `senderID` INT NOT NULL,
+            `receiverID` INT NULL,
+            `message` VARCHAR(250) NOT NULL,
+            `date` DATE NOT NULL DEFAULT (datetime('now','localtime'))
+            )""")
+        except:
+            pass
+        else:
+            self.logList.insert(END, "[DB] Tabulka 'messages' byla vytvořena!")
+            self.insertData(["DB", "Vytvořena tabulka 'messages'"], self.db)
+
+        # vytvoření tabulky users
+        try:
+            self.db.execute("""CREATE TABLE users (
+            `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            `nickname` VARCHAR(30) NOT NULL,
+            `password` VARCHAR(75) NOT NULL,
+            `date` DATE NOT NULL DEFAULT (datetime('now','localtime'))
+            )""")
+        except:
+            pass
+        else:
+            self.logList.insert(END, "[DB] Tabulka 'users' byla vytvořena!")
+            self.insertData(["DB", "Vytvořena tabulka 'users'"], self.db)
+
+            self.db.execute("SELECT COUNT(*) FROM messages")
+
+            if self.db.fetchone()[0] > 0:
+                self.db.execute("DELETE FROM messages")
+
+                self.insertData(["DB", "Vyprázdněna tabulka 'messages'"], self.db)
+                self.logList.insert(END, "[DB] Vyprázdněna tabulka 'messages'")
 
         self.port = 2205
         self.host = socket.gethostname()
