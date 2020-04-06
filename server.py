@@ -12,7 +12,7 @@ root.configure(background='#bdc3c7')
 root.geometry('1000x500')
 root.minsize(1000, 500)
 root.maxsize(1000, 500)
-root.title("OnLuk Super-Chat Server v0.4") #nazev okna
+root.title("OnLuk Super-Chat Server v0.5") #nazev okna
 
 # vytvoření/otevření souboru s logy
 try:
@@ -190,21 +190,16 @@ class Server:
                             self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází!")
                             return
 
-                        print("a")
                         if msgdata["type"] == "register":
-                            print("b")
                             db.execute("SELECT COUNT(nickname) FROM users WHERE nickname = ?", (msgdata["nick"],))
                             if db.fetchone()[0] != 0:
-                                print("c")
                                 error = {
                                     "type": "error",
                                     "msg": "[SERVER] Uživatel s touto přezdívkou již existuje!"
                                 }
                                 error = json.dumps(error)
                                 conn.send(bytes(error, "utf-8"))
-                                print("d")
                             else:
-                                print("e")
                                 db.execute("INSERT INTO users (nickname, password) VALUES (?, ?)", (msgdata["nick"], msgdata["password"]))
 
                                 db.execute("SELECT ID FROM users WHERE nickname = ? AND password = ?", (msgdata["nick"],msgdata["password"]))
@@ -217,7 +212,7 @@ class Server:
                                 }
                                 success = json.dumps(success)
                                 conn.send(bytes(success, "utf-8"))
-                                print("f")
+
                             db.close()
                         elif msgdata["type"] == "login":
                             db.execute("SELECT COUNT(ID) FROM users WHERE nickname = ? AND password = ?", (msgdata["nick"],msgdata["password"]))

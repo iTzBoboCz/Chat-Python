@@ -14,7 +14,7 @@ root.configure(background='#bdc3c7')
 root.geometry('1000x500')
 root.minsize(1000, 500)
 root.maxsize(1000, 500)
-root.title("OnLuk Super-Chat v0.4") #nazev okna
+root.title("OnLuk Super-Chat v0.5") #nazev okna
 
 class MainApp:
     def __init__(self):
@@ -240,8 +240,9 @@ class MainApp:
                 msg = self.serversocket.recv(1024)
                 if not msg:
                     self.serversocket.close()
-                    self.messageList.insert(END, "[SERVER] Nefunguje spojení se serverem. Za 2 sekundy Vás zkusíme připojit znovu.")
-                    self.reconnect()
+                    self.messageList.insert(END, "[SERVER] Nefunguje spojení se serverem, zkuste to prosím později.")
+                    # self.messageList.insert(END, "[SERVER] Nefunguje spojení se serverem. Za 2 sekundy Vás zkusíme připojit znovu.")
+                    # self.reconnect()
                 else:
                     msg = msg.decode("utf-8")
                     msg = json.loads(msg)
@@ -250,17 +251,17 @@ class MainApp:
             except:
                 self.messageList.insert(END, "[SERVER] Nefunguje spojení se serverem.")
                 break
-    def reconnect(self):
-        while True:
-            sleep(2)
-            try:
-                self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.serversocket.connect((self.host, self.port))
-
-            except:
-                pass
-            else:
-                break
+    # def reconnect(self):
+    #     while True:
+    #         sleep(2)
+    #         try:
+    #             self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #             self.serversocket.connect((self.host, self.port))
+    #
+    #         except:
+    #             pass
+    #         else:
+    #             break
 
 if __name__ == '__main__':
     app = MainApp()
