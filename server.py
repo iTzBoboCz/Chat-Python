@@ -134,8 +134,8 @@ class Server:
                 return
 
         db.execute("INSERT INTO logs ('logType', 'logMessage') VALUES (?, ?)", data)
-        db.execute("COMMIT")
         if dbStatus == True:
+            db.execute("COMMIT")
             db.close()
 
     # zapnutí serveru
