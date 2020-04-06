@@ -22,6 +22,9 @@ except:
     logfile = open("server_log.db", "w+")
     logfile.close()
 
+# oprava chyby s právy při více vláknech (uživatelech)
+os.chmod("server_log.db", 0o777)
+
 class Server:
     def __init__(self):
         self.serverFrame = Frame(root)
@@ -46,7 +49,7 @@ class Server:
 
         try:
             # připojení k DB
-            self.db = sql.connect("server_log.db")
+            self.db = sql.connect("server_log.db", check_same_thread=False, isolation_level=None)
 
             # nastavení kurzoru (můžeme vypisovat výsledky z DB)
             self.db = self.db.cursor()
@@ -104,6 +107,7 @@ class Server:
 
                 self.insertData(["DB", "Vyprázdněna tabulka 'messages'"], self.db)
                 self.logList.insert(END, "[DB] Vyprázdněna tabulka 'messages'")
+            self.db.close()
 
         self.port = 2205
         self.host = socket.gethostname()
@@ -115,13 +119,24 @@ class Server:
         atexit.register(self.exitProgram)
 
     # metoda, která obstarává logování do DB
-    def insertData(self, data, db):
+    def insertData(self, data, db = True):
         """
         logType - Info (Status, ), Error, Warning, Message
         """
 
+        dbStatus = db if True else False
+        if dbStatus == True:
+            try:
+                db = sql.connect("server_log.db")
+                db = db.cursor()
+            except:
+                self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází!")
+                return
+
         db.execute("INSERT INTO logs ('logType', 'logMessage') VALUES (?, ?)", data)
         db.execute("COMMIT")
+        if dbStatus == True:
+            db.close()
 
     # zapnutí serveru
     def start(self):
@@ -132,20 +147,11 @@ class Server:
 
         self.stopped = False
         self.logList.insert(END, "[SERVER] Server byl zapnut.")
-        self.insertData(["Info", "Server Start"], self.db)
+        self.insertData(["Info", "Server Start"])
         thread_conn = thread.start_new_thread(self.connectClients, ())
 
     # připojení jednotlivého klienta
     def connectClients(self):
-        try:
-            # připojení k DB
-            db = sql.connect("server_log.db")
-
-            # nastavení kurzoru (můžeme vypisovat výsledky z DB)
-            db = db.cursor()
-        except:
-            self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází!")
-            return
         while self.stopped == False:
             conn, address = self.server.accept()  # prijmi clienta
             thread_conn = thread.start_new_thread(self.chat, (conn, self.clients, address,))
@@ -154,19 +160,10 @@ class Server:
 
             if self.stopped == False:
                 self.logList.insert(END, f"[{address}]: connected")
-                self.insertData(["Message", f"[{address}]: connected"], db)
+                self.insertData(["Message", f"[{address}]: connected"])
 
     # přijímání a odesílání dat; uživatel = jedno vlákno
     def chat(self, conn, clients, address):
-        try:
-            # připojení k DB
-            db = sql.connect("server_log.db")
-
-            # nastavení kurzoru (můžeme vypisovat výsledky z DB)
-            db = db.cursor()
-        except:
-            self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází!")
-            return
         while self.stopped == False:
             #if is not None => pokud není prázdná
             # pokud existuje
@@ -175,7 +172,7 @@ class Server:
                 msg = conn.recv(1024) #zprava
                 if not msg:
                     self.logList.insert(END, f"[{address}]: disconnected")
-                    self.insertData(["Message", f"[{address}]: disconnected"], db)
+                    self.insertData(["Message", f"[{address}]: disconnected"])
                     conn.close()
                     self.clients.remove({"address": address, "conn": conn})
                     break
@@ -186,16 +183,28 @@ class Server:
 
                     # ukázka, jak vypadá msgdata: {"type": "register", "nick": "test", "password": "56af4bde70a47ae7d0f1ebb30e45ed336165d5c9ec00ba9a92311e33a4256d74"}
                     if "type" in msgdata:
+                        try:
+                            db = sql.connect("server_log.db", check_same_thread=False, isolation_level=None)
+                            db = db.cursor()
+                        except:
+                            self.logList.insert(END, "[ERROR] Serveru se nepodařilo spojit se s databází!")
+                            return
+
+                        print("a")
                         if msgdata["type"] == "register":
+                            print("b")
                             db.execute("SELECT COUNT(nickname) FROM users WHERE nickname = ?", (msgdata["nick"],))
                             if db.fetchone()[0] != 0:
+                                print("c")
                                 error = {
                                     "type": "error",
                                     "msg": "[SERVER] Uživatel s touto přezdívkou již existuje!"
                                 }
                                 error = json.dumps(error)
                                 conn.send(bytes(error, "utf-8"))
+                                print("d")
                             else:
+                                print("e")
                                 db.execute("INSERT INTO users (nickname, password) VALUES (?, ?)", (msgdata["nick"], msgdata["password"]))
 
                                 db.execute("SELECT ID FROM users WHERE nickname = ? AND password = ?", (msgdata["nick"],msgdata["password"]))
@@ -208,7 +217,8 @@ class Server:
                                 }
                                 success = json.dumps(success)
                                 conn.send(bytes(success, "utf-8"))
-
+                                print("f")
+                            db.close()
                         elif msgdata["type"] == "login":
                             db.execute("SELECT COUNT(ID) FROM users WHERE nickname = ? AND password = ?", (msgdata["nick"],msgdata["password"]))
                             userID = db.fetchone()[0]
@@ -229,6 +239,7 @@ class Server:
                                 }
                                 error = json.dumps(error)
                                 conn.send(bytes(error, "utf-8"))
+                            db.close()
                         elif msgdata["type"] == "msg":
                             # TODO: ukládání zpráv (níže)
                             #db.execute("INSERT INTO messages (senderID, message) VALUES (?, ?)", (msgdata["id"] ,msgdata["msg"]))
@@ -266,12 +277,12 @@ class Server:
         if self.stopped == False:
             try:
                 for client in self.clients:
-                    self.insertData(["Message", f"[{client['address']}]: disconnected"], self.db)
+                    self.insertData(["Message", f"[{client['address']}]: disconnected"])
                     client["conn"].close()
                     self.clients.remove(client)
             except:
                 pass
-            self.insertData(["Info", "Server Stopped"], self.db)
+            self.insertData(["Info", "Server Stopped"])
 
 if __name__ == "__main__":
     server = Server()
